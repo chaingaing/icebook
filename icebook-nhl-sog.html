@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICEBOOK — On-Ice SOG Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080b0f;--surface:#0e1318;--s2:#141a22;--s3:#1a2130;
+  --border:rgba(255,255,255,.07);--bb:rgba(99,233,195,.22);
+  --green:#63e9c3;--gdim:rgba(99,233,195,.1);
+  --red:#ff4d6d;--rdim:rgba(255,77,109,.1);
+  --gold:#f5c842;--ydim:rgba(245,200,66,.1);
+  --blue:#4da6ff;--bdim:rgba(77,166,255,.1);
+  --text:#e8edf2;--t2:rgba(232,237,242,.5);--t3:rgba(232,237,242,.22);
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 40% at 15% 0%,rgba(99,233,195,.035) 0%,transparent 55%),radial-gradient(ellipse 50% 35% at 85% 100%,rgba(245,200,66,.025) 0%,transparent 55%);pointer-events:none;z-index:0}
+.root{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 24px}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 0 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:14px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand-n{font-family:var(--sans);font-size:24px;font-weight:800;letter-spacing:-.5px}
+.brand-n em{font-style:normal;color:var(--green)}
+.brand-t{font-size:10px;letter-spacing:3px;color:var(--t3);text-transform:uppercase}
+.hdr-r{display:flex;align-items:center;gap:12px}
+.api-pill{display:flex;align-items:center;gap:6px;padding:4px 12px;background:var(--surface);border:1px solid var(--border);font-size:10px;letter-spacing:1px;color:var(--t2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--t3);flex-shrink:0;transition:background .3s}
+.dot.live{background:var(--green);box-shadow:0 0 7px var(--green);animation:pulse 2s ease-in-out infinite}
+.dot.warn{background:var(--gold)}
+.dot.err{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ── CONTROLS ── */
+.ctrl{display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ctrl-lbl{font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;white-space:nowrap}
+.pills{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.pill{padding:6px 13px;background:var(--surface);border:1px solid var(--border);cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--t2);letter-spacing:.8px;transition:all .12s;white-space:nowrap}
+.pill:hover{border-color:rgba(99,233,195,.3);color:var(--text)}
+.pill.on{background:var(--gdim);border-color:var(--green);color:var(--green)}
+.date-inp{background:var(--s2);border:1px solid var(--border);color:var(--t2);font-family:var(--mono);font-size:11px;padding:6px 10px;outline:none;cursor:pointer;letter-spacing:.8px;color-scheme:dark}
+.date-inp:focus{border-color:var(--bb)}
+.icon-btn{display:flex;align-items:center;gap:6px;padding:6px 14px;background:var(--s2);border:1px solid var(--border);color:var(--t2);cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.8px;transition:all .12s;white-space:nowrap}
+.icon-btn:hover{border-color:var(--bb);color:var(--green)}
+.icon-btn svg{transition:transform .5s}
+.icon-btn.spin svg{animation:rot .7s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ── MAIN LAYOUT ── */
+.body{padding:16px 0 40px;display:flex;flex-direction:column;gap:14px}
+
+/* ── GAME HEADER CARD ── */
+.game-card{background:var(--surface);border:1px solid var(--border);overflow:hidden}
+.game-split{display:grid;grid-template-columns:1fr 80px 1fr}
+.gs-team{padding:20px 24px;display:flex;flex-direction:column;gap:6px}
+.gs-team.away{align-items:flex-end;text-align:right}
+.gs-abbr{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:4px;color:var(--t3)}
+.gs-name{font-family:var(--sans);font-size:20px;font-weight:800;letter-spacing:-.3px;line-height:1.1}
+.gs-rec{font-size:10px;color:var(--t2);letter-spacing:.5px}
+.gs-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--s2);border-left:1px solid var(--border);border-right:1px solid var(--border);gap:3px}
+.gs-vs{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:3px;color:var(--t3)}
+.gs-time{font-size:9px;color:var(--t3);writing-mode:vertical-rl;letter-spacing:1px;margin-top:4px}
+.game-meta{display:flex;gap:0;border-top:1px solid var(--border)}
+.gm-cell{flex:1;padding:10px 14px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:2px}
+.gm-cell:last-child{border-right:none}
+.gm-lbl{font-size:9px;letter-spacing:2px;color:var(--t3);text-transform:uppercase}
+.gm-val{font-size:11px;color:var(--t2);letter-spacing:.3px}
+
+/* ── LOADING STATE ── */
+.loading-state{display:flex;align-items:center;justify-content:center;gap:12px;padding:40px;color:var(--t3);font-size:11px;letter-spacing:2px;border:1px solid var(--border);background:var(--surface)}
+.spin-ring{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
+.empty{padding:44px 20px;text-align:center;border:1px dashed var(--border);color:var(--t3)}
+.empty-ico{font-size:28px;margin-bottom:10px;opacity:.3}
+.empty-txt{font-size:11px;letter-spacing:1px}
+
+/* ── TEAM SECTION ── */
+.team-block{background:var(--surface);border:1px solid var(--border)}
+.tb-header{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  background:linear-gradient(90deg,rgba(99,233,195,.04) 0%,transparent 50%);
+}
+.tb-header.away-h{background:linear-gradient(90deg,rgba(245,200,66,.04) 0%,transparent 50%)}
+.tb-abbr{font-family:var(--sans);font-size:20px;font-weight:800;letter-spacing:1px}
+.tb-abbr.h{color:var(--green)}.tb-abbr.a{color:var(--gold)}
+.tb-name{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--t2);margin-left:8px}
+.tb-badges{display:flex;gap:6px;align-items:center}
+.badge{display:inline-block;padding:3px 8px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase}
+.bg{background:var(--gdim);color:var(--green);border:1px solid rgba(99,233,195,.18)}
+.by{background:var(--ydim);color:var(--gold);border:1px solid rgba(245,200,66,.18)}
+.br{background:var(--rdim);color:var(--red);border:1px solid rgba(255,77,109,.18)}
+.bb2{background:var(--bdim);color:var(--blue);border:1px solid rgba(77,166,255,.18)}
+
+/* ── SORT TABS ── */
+.sort-bar{display:flex;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.sort-tab{padding:8px 16px;font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--t3);cursor:pointer;background:var(--surface);transition:all .12s;text-transform:uppercase;white-space:nowrap}
+.sort-tab:hover{color:var(--t2)}
+.sort-tab.active-sort{color:var(--green);background:var(--gdim);border-bottom:2px solid var(--green)}
+.sort-asc::after{content:' ↑'}
+.sort-desc::after{content:' ↓'}
+
+/* ── PLAYER TABLE ── */
+.ptbl{width:100%;border-collapse:collapse}
+.ptbl thead tr{background:var(--s2)}
+.ptbl th{
+  padding:8px 12px;font-size:9px;letter-spacing:2px;color:var(--t3);
+  text-transform:uppercase;border-bottom:1px solid var(--border);
+  font-weight:500;white-space:nowrap;cursor:pointer;user-select:none;
+  transition:color .12s;
+}
+.ptbl th:hover{color:var(--t2)}
+.ptbl th.sorted{color:var(--green)}
+.ptbl th.r,.ptbl td.r{text-align:right}
+.ptbl th.c,.ptbl td.c{text-align:center}
+.ptbl tbody tr{transition:background .1s}
+.ptbl tbody tr:hover{background:rgba(255,255,255,.025)}
+.ptbl tbody tr:last-child td{border-bottom:none}
+.ptbl td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
+
+/* Player name cell */
+.pname-cell{display:flex;align-items:center;gap:8px}
+.pos-tag{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;font-size:9px;font-family:var(--sans);font-weight:700;background:var(--s3);color:var(--t3);flex-shrink:0;letter-spacing:.5px}
+.pname{font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.2px}
+.pnum{font-size:10px;color:var(--t3);margin-left:2px}
+
+/* SOG for/against cells */
+.sog-for{font-family:var(--sans);font-size:16px;font-weight:700;color:var(--green)}
+.sog-ag{font-family:var(--sans);font-size:16px;font-weight:700;color:var(--red)}
+.sog-diff{font-family:var(--sans);font-size:15px;font-weight:700}
+.diff-pos{color:var(--green)}.diff-neg{color:var(--red)}.diff-zero{color:var(--t2)}
+.sog-pct{font-family:var(--sans);font-size:14px;font-weight:600}
+
+/* Mini bar */
+.bar-cell{width:80px;padding-right:4px}
+.mini-bar{height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:2px}
+.bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.bar-h{background:linear-gradient(90deg,#1a9b78,var(--green))}
+.bar-a{background:linear-gradient(90deg,#c49b10,var(--gold))}
+
+/* TOI cell */
+.toi-cell{font-size:11px;color:var(--t2);letter-spacing:.3px}
+.gp-cell{font-size:11px;color:var(--t3)}
+
+/* per-60 mini */
+.per60{font-size:10px;color:var(--t3);letter-spacing:.3px}
+
+/* heatmap shade */
+.heat-0{background:rgba(255,77,109,.0)}
+.heat-1{background:rgba(99,233,195,.04)}
+.heat-2{background:rgba(99,233,195,.08)}
+.heat-3{background:rgba(99,233,195,.13)}
+.heat-4{background:rgba(99,233,195,.18)}
+
+/* ── TEAM TOTALS STRIP ── */
+.totals-strip{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:1px;
+  background:var(--border);border-top:1px solid var(--border);
+}
+.tot-cell{background:var(--s2);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.tot-lbl{font-size:9px;letter-spacing:2px;color:var(--t3);text-transform:uppercase}
+.tot-val{font-family:var(--sans);font-size:18px;font-weight:700;line-height:1}
+.tot-sub{font-size:10px;color:var(--t2)}
+
+/* ── ERROR CARD ── */
+.err-card{padding:20px;background:var(--rdim);border:1px solid rgba(255,77,109,.2);color:var(--red);font-size:11px;letter-spacing:.5px;line-height:1.8}
+
+/* ── LEGEND ── */
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);font-size:10px;color:var(--t3)}
+.leg-item{display:flex;align-items:center;gap:5px;letter-spacing:.5px}
+.leg-dot{width:8px;height:8px;border-radius:50%}
+
+/* ── API LOG ── */
+.log-box{background:var(--bg);border:1px solid var(--border);padding:10px 14px;font-size:10px;color:var(--t3);line-height:2;max-height:110px;overflow-y:auto}
+.ll{display:flex;gap:8px}
+.lts{color:var(--t3);min-width:65px;flex-shrink:0}
+.lok{color:var(--green)}.lw{color:var(--gold)}.le{color:var(--red)}.li{color:var(--t2)}
+
+/* ── SKELETONS ── */
+.sk{background:linear-gradient(90deg,var(--s2) 25%,rgba(255,255,255,.04) 50%,var(--s2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:1px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp .35s ease both}
+.d1{animation-delay:.05s}.d2{animation-delay:.1s}.d3{animation-delay:.15s}
+
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.09);border-radius:2px}
+
+/* Tooltip */
+[data-tip]{position:relative;cursor:help}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100%+5px);left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border);padding:4px 8px;font-size:10px;color:var(--t2);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s;z-index:99}
+[data-tip]:hover::after{opacity:1}
+</style>
+</head>
+<body>
+<div class="root">
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="brand">
+    <div class="brand-n">ICE<em>BOOK</em></div>
+    <div class="brand-t">On-Ice SOG Intelligence</div>
+  </div>
+  <div class="hdr-r">
+    <div class="api-pill"><div class="dot" id="dot"></div><span id="stxt">Connecting…</span></div>
+    <div style="font-size:10px;color:var(--t3);letter-spacing:1px" id="hdate"></div>
+  </div>
+</header>
+
+<!-- CONTROLS -->
+<div class="ctrl">
+  <span class="ctrl-lbl">Date</span>
+  <input type="date" class="date-inp" id="datePick" value="2026-02-25" onchange="loadDate(this.value)">
+  <span class="ctrl-lbl" style="margin-left:8px">Games</span>
+  <div class="pills" id="pills">
+    <div class="sk" style="width:110px;height:30px"></div>
+    <div class="sk" style="width:110px;height:30px;animation-delay:.08s"></div>
+    <div class="sk" style="width:110px;height:30px;animation-delay:.16s"></div>
+  </div>
+  <button class="icon-btn" id="refBtn" onclick="loadDate(document.getElementById('datePick').value)">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    REFRESH
+  </button>
+</div>
+
+<!-- BODY -->
+<div class="body" id="body">
+  <div class="empty"><div class="empty-ico">📡</div><div class="empty-txt">Loading schedule…</div></div>
+</div>
+
+<!-- LOG -->
+<div style="padding:0 0 16px">
+  <div style="font-size:9px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:6px">API Feed</div>
+  <div class="log-box" id="log"><div class="ll"><span class="lts">--:--:--</span><span class="li">Initializing ICEBOOK…</span></div></div>
+</div>
+
+</div><!-- /root -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+const WEB_API  = 'https://api-web.nhle.com/v1';
+const STAT_API = 'https://api.nhle.com/stats/rest/en';
+const SEASON   = '20252026';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let games = [];
+let selGame = null;
+let sortState = {}; // { teamId: { col, dir } }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LOGGING
+// ═══════════════════════════════════════════════════════════════════════════
+function log(msg, t='li') {
+  const box = document.getElementById('log');
+  const ts  = new Date().toTimeString().slice(0,8);
+  const d   = document.createElement('div');
+  d.className = 'll';
+  d.innerHTML = `<span class="lts">${ts}</span><span class="${t}">${msg}</span>`;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+function setStatus(st, txt) {
+  document.getElementById('dot').className  = 'dot ' + st;
+  document.getElementById('stxt').textContent = txt;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FETCH HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+async function apiFetch(url, label) {
+  log(`GET ${label}`, 'li');
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`${label} → HTTP ${res.status}`);
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. LOAD SCHEDULE FOR DATE
+// ═══════════════════════════════════════════════════════════════════════════
+async function loadDate(date) {
+  setStatus('', 'Loading…');
+  btn('refBtn', true);
+  showBodyLoading();
+  selGame = null;
+
+  try {
+    const data = await apiFetch(
+      `${WEB_API}/schedule/${date}`,
+      `/schedule/${date}`
+    );
+    const all = [];
+    for (const day of (data.gameWeek || [])) {
+      for (const g of (day.games || [])) {
+        if (!g.homeTeam || !g.awayTeam) continue;
+        all.push({
+          id: String(g.id),
+          homeAbbr: g.homeTeam.abbrev,
+          homeName: g.homeTeam.commonName?.default || g.homeTeam.placeName?.default || g.homeTeam.abbrev,
+          homeId:   g.homeTeam.id,
+          awayAbbr: g.awayTeam.abbrev,
+          awayName: g.awayTeam.commonName?.default || g.awayTeam.placeName?.default || g.awayTeam.abbrev,
+          awayId:   g.awayTeam.id,
+          venue:    g.venue?.default || 'Arena',
+          time:     g.startTimeUTC
+            ? new Date(g.startTimeUTC).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZoneName:'short'})
+            : 'TBD',
+          state: g.gameState,
+          date:  day.date,
+        });
+      }
+    }
+
+    if (all.length === 0) {
+      log(`No games on ${date}`, 'lw');
+      setStatus('warn', `No games · ${date}`);
+      showBodyMsg('📅', `No NHL games scheduled for ${date}`);
+    } else {
+      games = all;
+      log(`${games.length} games on ${date}`, 'lok');
+      setStatus('live', `Live · ${date}`);
+      renderPills();
+      pickGame(games[0].id);
+    }
+  } catch(e) {
+    log(`Schedule error: ${e.message}`, 'le');
+    setStatus('err', 'API Error');
+    showBodyMsg('⚠️', `Could not load schedule: ${e.message}`);
+  }
+
+  btn('refBtn', false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. RENDER GAME PILLS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderPills() {
+  document.getElementById('pills').innerHTML = games.map(g =>
+    `<div class="pill ${selGame?.id===g.id?'on':''}" id="pill-${g.id}" onclick="pickGame('${g.id}')">
+      ${g.awayAbbr} <span style="color:var(--t3)">@</span> ${g.homeAbbr}
+    </div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. PICK GAME → LOAD BOTH ROSTERS + ON-ICE STATS
+// ═══════════════════════════════════════════════════════════════════════════
+async function pickGame(id) {
+  selGame = games.find(g => g.id === id);
+  if (!selGame) return;
+
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+  document.getElementById('pill-' + id)?.classList.add('on');
+
+  showBodyLoading('Loading rosters + on-ice stats…');
+  setStatus('live', 'Fetching player data…');
+
+  try {
+    const g = selGame;
+
+    // Parallel: fetch both rosters + both teams' on-ice stats
+    const [homeRoster, awayRoster, homeStats, awayStats] = await Promise.all([
+      fetchRoster(g.homeAbbr),
+      fetchRoster(g.awayAbbr),
+      fetchOnIceStats(g.homeAbbr),
+      fetchOnIceStats(g.awayAbbr),
+    ]);
+
+    log(`${g.homeAbbr} roster: ${homeRoster.length} skaters`, 'lok');
+    log(`${g.awayAbbr} roster: ${awayRoster.length} skaters`, 'lok');
+    log(`${g.homeAbbr} on-ice records: ${homeStats.length}`, 'lok');
+    log(`${g.awayAbbr} on-ice records: ${awayStats.length}`, 'lok');
+
+    // Merge roster + stats
+    const homeMerged = mergeData(homeRoster, homeStats);
+    const awayMerged = mergeData(awayRoster, awayStats);
+
+    setStatus('live', `Live · ${g.date}`);
+    renderGame(g, homeMerged, awayMerged);
+
+  } catch(e) {
+    log(`Data error: ${e.message}`, 'le');
+    setStatus('err', 'Fetch failed');
+    document.getElementById('body').innerHTML =
+      `<div class="err-card">⚠ Failed to load player data: ${e.message}<br>
+       <span style="color:var(--t2)">This tool requires api-web.nhle.com and api.nhle.com — ensure you are opening this file in your local browser, not a sandboxed preview.</span></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. FETCH ROSTER (non-goalies only)
+// ═══════════════════════════════════════════════════════════════════════════
+async function fetchRoster(abbr) {
+  const data = await apiFetch(
+    `${WEB_API}/roster/${abbr}/current`,
+    `/roster/${abbr}/current`
+  );
+  const skaters = [
+    ...(data.forwards  || []),
+    ...(data.defensemen || []),
+  ];
+  return skaters.map(p => ({
+    id:       p.id,
+    name:     `${p.firstName?.default || ''} ${p.lastName?.default || p.lastName || ''}`.trim(),
+    number:   p.sweaterNumber || '',
+    pos:      p.positionCode || '?',
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. FETCH ON-ICE SOG STATS
+//    Uses api.nhle.com/stats/rest/en/skater/onIce
+//    Key fields: onIceShotsFor, onIceShotsAgainst, timeOnIce, gamesPlayed
+// ═══════════════════════════════════════════════════════════════════════════
+async function fetchOnIceStats(abbr) {
+  const params = new URLSearchParams({
+    isAggregate: 'false',
+    isGame:      'false',
+    start:       '0',
+    limit:       '100',
+    factCayenneExp: 'gamesPlayed>=1',
+    cayenneExp:  `gameTypeId=2 and seasonId=${SEASON} and teamAbbrevs="${abbr}"`,
+  });
+  const url  = `${STAT_API}/skater/onIce?${params}`;
+  const data = await apiFetch(url, `/skater/onIce?team=${abbr}`);
+  return data.data || [];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. MERGE ROSTER + ON-ICE STATS
+// ═══════════════════════════════════════════════════════════════════════════
+function mergeData(roster, stats) {
+  // Stats are keyed by playerId
+  const statsMap = {};
+  for (const s of stats) statsMap[s.playerId] = s;
+
+  return roster.map(p => {
+    const s = statsMap[p.id] || {};
+    const sogF  = s.onIceShotsFor      ?? 0;
+    const sogA  = s.onIceShotsAgainst  ?? 0;
+    const diff  = sogF - sogA;
+    const pct   = (sogF + sogA) > 0 ? ((sogF / (sogF + sogA)) * 100) : null;
+    // TOI is returned as "MM:SS" string or seconds
+    const toiRaw = s.timeOnIce || '0:00';
+    const toiMin = parseTOI(toiRaw);
+    const gp     = s.gamesPlayed || 0;
+    // Per-60 rates
+    const f60 = toiMin > 0 ? (sogF / toiMin * 60).toFixed(1) : '—';
+    const a60 = toiMin > 0 ? (sogA / toiMin * 60).toFixed(1) : '—';
+    return {
+      ...p,
+      sogF, sogA, diff,
+      pct:   pct !== null ? pct.toFixed(1) : null,
+      toi:   fmtTOI(toiMin),
+      toiMin,
+      gp,
+      f60, a60,
+      hasData: gp > 0,
+    };
+  }).sort((a,b) => b.sogF - a.sogF); // default sort by SOG For
+}
+
+function parseTOI(raw) {
+  if (typeof raw === 'number') return raw / 60;
+  if (typeof raw === 'string' && raw.includes(':')) {
+    const [m, s] = raw.split(':').map(Number);
+    return m + (s / 60);
+  }
+  return 0;
+}
+function fmtTOI(min) {
+  if (!min) return '—';
+  const m = Math.floor(min), s = Math.round((min - m) * 60);
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. RENDER FULL GAME VIEW
+// ═══════════════════════════════════════════════════════════════════════════
+function renderGame(g, home, away) {
+  const body = document.getElementById('body');
+  body.innerHTML = `
+    ${gameHeader(g)}
+    <div id="home-block" class="fu d1"></div>
+    <div id="away-block" class="fu d2"></div>
+    <div style="font-size:10px;color:var(--t3);line-height:1.8;padding:10px 0;border-top:1px solid var(--border);letter-spacing:.3px">
+      Data: NHL Stats API · Season ${SEASON.slice(0,4)}-${SEASON.slice(4)} Regular Season · All Situations · Aggregated through latest game.
+      On-Ice SOG% = shots for ÷ (shots for + shots against) while player is on ice.
+    </div>`;
+
+  renderTeamBlock('home-block', g.homeAbbr, g.homeName, 'h', home);
+  renderTeamBlock('away-block', g.awayAbbr, g.awayName, 'a', away);
+}
+
+function gameHeader(g) {
+  return `<div class="game-card fu">
+    <div class="game-split">
+      <div class="gs-team home">
+        <div class="gs-abbr">${g.homeAbbr} · HOME</div>
+        <div class="gs-name">${g.homeName}</div>
+        <div class="gs-rec" style="color:var(--green)">On-Ice SOG Analysis</div>
+      </div>
+      <div class="gs-mid">
+        <div class="gs-vs">VS</div>
+        <div class="gs-time">${g.time}</div>
+      </div>
+      <div class="gs-team away">
+        <div class="gs-abbr">${g.awayAbbr} · AWAY</div>
+        <div class="gs-name">${g.awayName}</div>
+        <div class="gs-rec" style="color:var(--gold)">On-Ice SOG Analysis</div>
+      </div>
+    </div>
+    <div class="game-meta">
+      <div class="gm-cell"><div class="gm-lbl">Venue</div><div class="gm-val">${g.venue}</div></div>
+      <div class="gm-cell"><div class="gm-lbl">Tip-off</div><div class="gm-val">${g.time}</div></div>
+      <div class="gm-cell"><div class="gm-lbl">Season</div><div class="gm-val">2025-26 Regular Season</div></div>
+      <div class="gm-cell"><div class="gm-lbl">Data Source</div><div class="gm-val">NHL Stats API · All Situations</div></div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. RENDER ONE TEAM BLOCK
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTeamBlock(elId, abbr, name, side, players) {
+  const el = document.getElementById(elId);
+  const colId = `col-${abbr}`;
+
+  // Totals
+  const totalF = players.reduce((s,p)=>s+p.sogF,0);
+  const totalA = players.reduce((s,p)=>s+p.sogA,0);
+  const maxF = Math.max(...players.map(p=>p.sogF), 1);
+  const avgPct = players.filter(p=>p.pct!==null).reduce((s,p)=>s+parseFloat(p.pct),0) /
+                 Math.max(1, players.filter(p=>p.pct!==null).length);
+  const withData = players.filter(p=>p.hasData).length;
+
+  el.innerHTML = `
+    <div class="team-block">
+      <div class="tb-header ${side==='a'?'away-h':''}">
+        <div style="display:flex;align-items:center">
+          <div class="tb-abbr ${side}">${abbr}</div>
+          <div class="tb-name">${name}</div>
+        </div>
+        <div class="tb-badges">
+          <span class="badge ${side==='h'?'bg':'by'}" data-tip="Players with season on-ice data">${withData} of ${players.length} with data</span>
+          <span class="badge bb2" data-tip="Season avg on-ice SOG%">${avgPct.toFixed(1)}% avg SOG%</span>
+        </div>
+      </div>
+      <div id="${colId}-table"></div>
+      <div class="totals-strip">
+        <div class="tot-cell"><div class="tot-lbl">Skaters</div><div class="tot-val">${players.length}</div></div>
+        <div class="tot-cell"><div class="tot-lbl" data-tip="Sum of on-ice SOG For across all skaters">Total SOG For</div><div class="tot-val" style="color:var(--green)">${totalF}</div><div class="tot-sub">season on-ice</div></div>
+        <div class="tot-cell"><div class="tot-lbl" data-tip="Sum of on-ice SOG Against across all skaters">Total SOG Ag</div><div class="tot-val" style="color:var(--red)">${totalA}</div><div class="tot-sub">season on-ice</div></div>
+        <div class="tot-cell"><div class="tot-lbl">Net Diff</div><div class="tot-val" style="color:${totalF-totalA>=0?'var(--green)':'var(--red)'}">${totalF-totalA>0?'+':''}${totalF-totalA}</div></div>
+        <div class="tot-cell"><div class="tot-lbl">Avg SOG%</div><div class="tot-val" style="color:var(--blue)">${avgPct.toFixed(1)}%</div></div>
+      </div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>SOG For = shots while on ice</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>SOG Ag = opponent shots while on ice</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>SOG% = For ÷ (For+Ag) × 100</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--t3)"></div>Per-60 = rate per 60 min TOI</div>
+      </div>
+    </div>`;
+
+  sortState[abbr] = { col: 'sogF', dir: 'desc' };
+  buildTable(colId + '-table', abbr, side, players, maxF);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. BUILD SORTABLE TABLE
+// ═══════════════════════════════════════════════════════════════════════════
+function buildTable(elId, abbr, side, players, maxF) {
+  const el = document.getElementById(elId);
+  const { col, dir } = sortState[abbr] || { col: 'sogF', dir: 'desc' };
+
+  // Sort
+  const sorted = [...players].sort((a,b) => {
+    let av = a[col], bv = b[col];
+    // Handle null pct
+    if (av === null) av = dir==='desc' ? -Infinity : Infinity;
+    if (bv === null) bv = dir==='desc' ? -Infinity : Infinity;
+    if (typeof av === 'string') av = parseFloat(av)||0;
+    if (typeof bv === 'string') bv = parseFloat(bv)||0;
+    return dir === 'desc' ? bv - av : av - bv;
+  });
+
+  const maxSOGF = Math.max(...sorted.map(p=>p.sogF), 1);
+  const arrow = dir === 'desc' ? '↓' : '↑';
+
+  const thCls = (c) => col===c ? 'sorted' : '';
+
+  el.innerHTML = `
+    <table class="ptbl">
+      <thead>
+        <tr>
+          <th onclick="sortTable('${abbr}','${side}',players_${abbr},'name')">
+            PLAYER ${col==='name'?arrow:''}
+          </th>
+          <th class="r ${thCls('sogF')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'sogF')"
+              data-tip="Total shots-on-goal generated while player was on ice (season)">
+            SOG FOR ${col==='sogF'?arrow:''}
+          </th>
+          <th class="r ${thCls('sogA')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'sogA')"
+              data-tip="Total shots-on-goal allowed while player was on ice (season)">
+            SOG AG ${col==='sogA'?arrow:''}
+          </th>
+          <th class="r ${thCls('diff')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'diff')"
+              data-tip="SOG For minus SOG Against (positive = team generates more)">
+            DIFF ${col==='diff'?arrow:''}
+          </th>
+          <th class="r ${thCls('pct')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'pct')"
+              data-tip="On-Ice SOG% = For / (For + Against) × 100. 50% = neutral.">
+            SOG% ${col==='pct'?arrow:''}
+          </th>
+          <th class="r ${thCls('f60')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'f60')"
+              data-tip="SOG For per 60 minutes of ice time">
+            F/60 ${col==='f60'?arrow:''}
+          </th>
+          <th class="r ${thCls('a60')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'a60')"
+              data-tip="SOG Against per 60 minutes of ice time">
+            A/60 ${col==='a60'?arrow:''}
+          </th>
+          <th class="r ${thCls('toi')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'toiMin')"
+              data-tip="Total ice time this season (MM:SS)">
+            TOI ${col==='toiMin'?arrow:''}
+          </th>
+          <th class="c ${thCls('gp')}" onclick="sortTable('${abbr}','${side}',players_${abbr},'gp')"
+              data-tip="Games played this season">
+            GP ${col==='gp'?arrow:''}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map((p,i) => playerRow(p, side, maxSOGF)).join('')}
+      </tbody>
+    </table>`;
+
+  // Stash players on window for sort callbacks
+  window[`players_${abbr}`] = players;
+}
+
+function playerRow(p, side, maxF) {
+  if (!p.hasData) {
+    return `<tr style="opacity:.4">
+      <td><div class="pname-cell">
+        <div class="pos-tag">${p.pos}</div>
+        <div><div class="pname">${p.name}</div></div>
+      </div></td>
+      <td colspan="8" style="font-size:10px;color:var(--t3);letter-spacing:.5px">No season data available</td>
+    </tr>`;
+  }
+
+  const diffCls = p.diff > 0 ? 'diff-pos' : p.diff < 0 ? 'diff-neg' : 'diff-zero';
+  const diffStr = p.diff > 0 ? `+${p.diff}` : String(p.diff);
+  const pctStr  = p.pct !== null ? `${p.pct}%` : '—';
+  const pctColor = p.pct !== null
+    ? (parseFloat(p.pct) > 52 ? 'color:var(--green)' : parseFloat(p.pct) < 48 ? 'color:var(--red)' : 'color:var(--t2)')
+    : 'color:var(--t3)';
+  const barW = Math.round((p.sogF / maxF) * 100);
+  const barCls = side === 'h' ? 'bar-h' : 'bar-a';
+
+  return `<tr>
+    <td>
+      <div class="pname-cell">
+        <div class="pos-tag">${p.pos}</div>
+        <div>
+          <div class="pname">${p.name} <span class="pnum">#${p.number}</span></div>
+        </div>
+      </div>
+    </td>
+    <td class="r">
+      <div class="sog-for">${p.sogF}</div>
+      <div class="mini-bar"><div class="bar-fill ${barCls}" style="width:${barW}%"></div></div>
+    </td>
+    <td class="r"><div class="sog-ag">${p.sogA}</div></td>
+    <td class="r"><div class="sog-diff ${diffCls}">${diffStr}</div></td>
+    <td class="r"><div class="sog-pct" style="${pctColor}">${pctStr}</div></td>
+    <td class="r"><div class="per60">${p.f60}</div></td>
+    <td class="r"><div class="per60">${p.a60}</div></td>
+    <td class="r toi-cell">${p.toi}</td>
+    <td class="c gp-cell">${p.gp}</td>
+  </tr>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 10. SORT HANDLER
+// ═══════════════════════════════════════════════════════════════════════════
+function sortTable(abbr, side, players, col) {
+  const cur = sortState[abbr] || { col: 'sogF', dir: 'desc' };
+  const dir = cur.col === col && cur.dir === 'desc' ? 'asc' : 'desc';
+  sortState[abbr] = { col, dir };
+  const maxF = Math.max(...players.map(p=>p.sogF), 1);
+  buildTable(`col-${abbr}-table`, abbr, side, players, maxF);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════════
+function btn(id, loading) {
+  const el = document.getElementById(id);
+  if (loading) el.classList.add('spin'); else el.classList.remove('spin');
+}
+function showBodyLoading(msg='Loading…') {
+  document.getElementById('body').innerHTML =
+    `<div class="loading-state"><div class="spin-ring"></div><span>${msg}</span></div>`;
+}
+function showBodyMsg(ico, txt) {
+  document.getElementById('body').innerHTML =
+    `<div class="empty"><div class="empty-ico">${ico}</div><div class="empty-txt">${txt}</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('hdate').textContent =
+    new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}).toUpperCase();
+  loadDate('2026-02-25');
+});
+</script>
+</body>
+</html>
